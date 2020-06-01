@@ -1,0 +1,113 @@
+1. DOWNLOADING RAW DATA FROM CHASER (for password protected data):
+
+- https://cda.harvard.edu/chaser/
+- Type in the ObsID of interest and click search (here I will use ObsID 16218 as an example)
+- Add to retrieval list, log in and retrieve products
+- Enter email address or just wait a few minutes and click on link
+- Download and save data into rawData folder and then into the file with the corresponding ObsID e.g. for ObsID 21454, 
+download data under the directory \Users\chloe\Documents\McGill\Honours_research_thesis\chandra_data\21454
+
+To copy this data onto irulan:
+(from the terminal)
+scp -r \Users\chloe\Documents\McGill\Honours_research_hesis\rawData\21454 robeynsc@choco.physics.mcgill.ca:/homes/zark/robeynsc/chandra_data
+
+More generally:
+scp -r [directory the file is in] [directory you want to move it to]
+
+- note the space between the two directories
+- to find the name of the directory in ciao type in "pwd" (print working directory)
+
+2. EXTRACTING THE DATA
+
+Now we can open ciao and access the data.
+- The data is in a .tar file so to extract the contents do: tar xvf [FILE NAME]
+- Now the files all have a .gz extension so to decompress do: gunzip [FILE NAME]
+- To decompress all the files in the directory, do: gunzip *.gz 
+
+3. REPROCESS THE DATA
+- chandra_repro indir="[OBSID]" outdir=""
+- This reprocesses the data and places it in ./[OBSID]/repro
+
+4. DEFINING THE REGIONS
+- To view the events file in ds9: ds9 [FILE NAME] & 
+- (For this we want the evt2.fits file)
+- So for example, for 16218 this will be: "ds9 acisf16218_repro_evt2.fits &"
+- This takes a few seconds but be patient :)
+- Once the image shows up in ds9 in a new window, view it using the log scale (click 'scale' then 'log')
+- In the top bar: edit --> region
+- In the region tab in the top bar click 'shape' then 'circle'
+- Click on the shape you want to focus on
+- In the bottom bar click 'region' --> all --> information --> input information for the 
+centre and radius of the desired region, make sure units are correct! (If region shape is an 
+annulus, click 'generate' before 'apply')
+- Then click 'apply' and 'close'
+- Save --> save it to the right directory and change the name (the part before the .reg)
+--> ok --> change the format to 'ciao' and the coordinate system to 'physical' --> ok
+
+Coordinates from Elie Bouffard's paper:
+SgrA*:  RA = 17:45:40:0409, Dec = -29:00:28:118, radius = 1.25" (units: arcseconds)
+Magnetar: RA = 17:45:40:169, Dec = -29:00:29.84, radius = 1.3"
+Background: Annulus with centre at SgrA*. Inner radius = 14", outer radius = 20"
+
+5. CREATING THE LIGHTCURVE (dmextract)
+- You should be in the repro directory
+- Type 'ls' to verify that the regions have been saved
+- Create a new directory to store the light curves: mkdir light_curves_16218
+- dmextract code:
+
+punlearn dmextract
+pset dmextract infile="acisf16218_repro_evt2.fits[ccd_id=7,energy=2000:8000,sky=region(sgra.reg)][bin time=::300]"
+pset dmextract outfile="./light_curves_15043/16218_magnetar_2-8keV_bin300_lc.fits"
+pset dmextract bkg="acisf16218_repro_evt2.fits[ccd_id=7,sky=region(bkg.reg)]"
+pset dmextract opt="ltc1"
+dmextract
+
+(The data has been binned in time intervals of 300s)
+
+6. PLOTTING THE LIGHTCURVES WITHIN CIAO 
+(Not a necessary step but useful to check if the lightcurve contains a flare)
+- Python code:
+
+unix% python
+
+>>> from pycrates import read_file
+>>> import matplotlib.pylab as plt
+>>> 
+>>> tab = read_file("src2_sub_lc.fits")
+>>> dt = tab.get_column("dt").values
+>>> rate = tab.get_column("net_rate").values
+>>> erate = tab.get_column("err_rate").values
+>>> 
+>>> plt.errorbar(dt, rate, yerr=erate, marker="o", color="red", mfc="black",mec="black", ecolor="grey")
+>>> plt.xlabel("$\Delta$ T (sec)")
+>>> plt.ylabel("Net Count Rate (counts/sec)")
+>>> plt.title("src2_sub_lc.fits")
+>>> plt.show()
+
+7. DMCOPY
+
+punlearn dmcopy
+pset dmcopy infile="acisf16218_repro_evt2.fits[EVENTS][sky=region(sgra.reg)][energy=2000:8000]"
+pset dmcopy outfile="16218_SgrA_2-8keV_evt.fits"
+pset dmcopy option="all"
+dmcopy
+
+8. SAVE FILES ONTO LAPTOP
+
+Open the terminal but don't log into choco or irulan yet
+scp -r robeynsc@choco.physics.mcgill.ca:/homes/zark/robeynsc/chandra_data/16218/repro/FILENAME /Users/Chloe/Documents/McGill/Data_processing
+
+(Essentially the inverse of what you did in step 1)
+
+9. RUN THE BAYESIAN BLOCKS
+
+
+
+
+
+
+
+
+
+
+
